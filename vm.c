@@ -11,7 +11,7 @@
 #define MAX_POSSIBLE ~0x80000000
 //using 0x80000000 introduces "negative" numbers
 #define ADD_TO_AGE 0x40000000
-#define DEBUG 1
+#define PRINT_DEBUG 1
 
 extern char data[];  // defined by kernel.ld
 pde_t *kpgdir;  // for use in scheduler()
@@ -91,8 +91,8 @@ checkProcAccBit(){
 
   //cprintf("checkAccessedBit\n");
   for (i = 0; i < MAX_PSYC_PAGES; i++)
-    if (myproc()->freepages[i].virtualAddress != (char*)0xffffffff){
-      pte1 = walkpgdir(myproc()->pgdir, (void*)myproc()->freepages[i].virtualAddress, 0);
+    if (myproc()->pagesFreedARR[i].virtualAddress != (char*)0xffffffff){
+      pte1 = walkpgdir(myproc()->pgdir, (void*)myproc()->pagesFreedARR[i].virtualAddress, 0);
       if (!*pte1){
         cprintf("checkAccessedBit: pte1 is empty\n");
         continue;
@@ -264,29 +264,28 @@ loaduvm(pde_t *pgdir, char *addr, struct inode *ip, uint offset, uint sz)
   return 0;
 }
 
-void fifoRecord(char *va){
+void fifoEntryRecord(char *va){
   int i;
-  //TODO delete 
+   
   cprintf("rnp pid:%d count:%d va:0x%x\n", myproc()->pid, myproc()->pagesInPhyMem, va);
   for (i = 0; i < MAX_PSYC_PAGES; i++)
-    if (myproc()->freepages[i].virtualAddress == (char*)0xffffffff)
+    if (myproc()->pagesFreedARR[i].virtualAddress == (char*)0xffffffff)
       goto foundrnp;
   cprintf("panic follows, pid:%d, name:%s\n", myproc()->pid, myproc()->name);
-  panic("recordNewPage: no free pages");
+  panic("NewPageRecord: no free pages");
 foundrnp:
-  myproc()->freepages[i].virtualAddress = va;
-  myproc()->freepages[i].next = myproc()->head;
-  myproc()->head = &myproc()->freepages[i];
+  myproc()->pagesFreedARR[i].virtualAddress = va;
+  myproc()->pagesFreedARR[i].next = myproc()->head;
+  myproc()->head = &myproc()->pagesFreedARR[i];
 }
 
 
-void recordNewPage(char *va) {
-  //TODO delete $$$
-  //TODO 
-  cprintf("recordNewPage: %s is calling fifoRecord with: 0x%x\n", myproc()->name, va);
-  fifoRecord(va);
+void NewPageRecord(char *va) {
+  
+  cprintf("NewPageRecord: %s is calling fifoRecord with: 0x%x\n", myproc()->name, va);
+  fifoEntryRecord(va);
   myproc()->pagesInPhyMem++;
-  //TODO delete 
+ 
   cprintf("\n++++++++++++++++++ proc->pagesinmem+++++++++++++ : %d\n", myproc()->pagesInPhyMem);
 }
 
@@ -294,65 +293,51 @@ void recordNewPage(char *va) {
 
 struct freepg *fifoWrite() {
   int i;
-  struct freepg *link, *l;
+  struct freepg *temp, *l;
   for (i = 0; i < MAX_PSYC_PAGES; i++){
-    if (myproc()->swappedpages[i].virtualAddress == (char*)0xffffffff)
+    if (myproc()->pagesSwappedARR[i].virtualAddress == (char*)0xffffffff)
       goto foundswappedpageslot;
   }
-  panic("writePageToSwapFile: FIFO no slot for swapped page");
+  panic("PageWriteInFile: FIFO no slot for swapped page");
 foundswappedpageslot:
-  link = myproc()->head;
-  if (link == 0)
+  temp = myproc()->head;
+  if (temp == 0)
     panic("fifoWrite: proc->head is NULL");
-  if (link->next == 0)
+  if (temp->next == 0)
     panic("fifoWrite: single page in phys mem");
-  // find the before-last link in the used pages list
-  while (link->next->next != 0)
-    link = link->next;
-  l = link->next;
-  link->next = 0;
+  // find the before-last temp in the used pages list
+  while (temp->next->next != 0)
+    temp = temp->next;
+  l = temp->next;
+  temp->next = 0;
 
-  if(DEBUG){
+  if(PRINT_DEBUG){
     //cprintf("\naddress between 0x%x and 0x%x was accessed but was on disk.\n", addr, addr+PGSIZE);
     cprintf("FIFO chose to page out page starting at 0x%x \n\n", l->virtualAddress);
   }
 
-  myproc()->swappedpages[i].virtualAddress = l->virtualAddress;
+  myproc()->pagesSwappedARR[i].virtualAddress = l->virtualAddress;
   int num = 0;
   if ((num = writeToSwapFile(myproc(), (char*)PTE_ADDR(l->virtualAddress), i * PGSIZE, PGSIZE)) == 0)
     return 0;
   // cprintf("written %d bytes to swap file, pid:%d, va:0x%x\n", num, proc->pid, l->va);//TODO delete
   pte_t *pte1 = walkpgdir(myproc()->pgdir, (void*)l->virtualAddress, 0);
   if (!*pte1)
-    panic("writePageToSwapFile: pte1 is empty");
+    panic("PageWriteInFile: pte1 is empty");
   // pte_t *pte2 = walkpgdir(proc->pgdir, addr, 1);
   // // if (!*pte2)
-  // //   panic("writePageToSwapFile: pte2 is empty");
+  // //   panic("PageWriteInFile: pte2 is empty");
   // *pte2 = PTE_ADDR(*pte1) | PTE_U | PTE_P | PTE_W;
   kfree((char*)PTE_ADDR(P2V_WO(*walkpgdir(myproc()->pgdir, l->virtualAddress, 0))));
   *pte1 = PTE_W | PTE_U | PTE_PG;
-  ++myproc()->totalPagedOutCount;
   ++myproc()->pagesInSwapFile;
-  cprintf("writePage:proc->totalPagedOutCount:%d\n", myproc()->totalPagedOutCount);//TODO delete
   cprintf("writePage:proc->pagesinswapfile:%d\n", myproc()->pagesInSwapFile);//TODO delete
   lcr3(V2P(myproc()->pgdir));
   return l;
 }
-/*
-int checkAccBit(char *va){
-  uint accessed;
-  pte_t *pte = walkpgdir(myproc()->pgdir, (void*)va, 0);
-  if (!*pte)
-    panic("checkAccBit: pte1 is empty");
-  accessed = (*pte) & PTE_A;
-  (*pte) &= ~PTE_A;
-  return accessed;
-}
-*/
 
-struct freepg *writePageToSwapFile(char* va) {
-  //TODO delete $$$
 
+struct freepg *PageWriteInFile(char* va) {
   return fifoWrite();
 }
 
@@ -379,7 +364,7 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
       cprintf("writing to swap file, proc->name: %s, pagesinmem: %d\n", myproc()->name, myproc()->pagesInPhyMem);
 
       //TODO remove l! it doesn't belong here
-      if ((l = writePageToSwapFile((char*)a)) == 0)
+      if ((l = PageWriteInFile((char*)a)) == 0)
         panic("allocuvm: error writing page to swap file");
 
       //TODO: these FIFO specific steps don't belong here!
@@ -404,7 +389,7 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
       //if(proc->pagesinmem >= 11)
         //TODO delete 
       cprintf("recorded new page, proc->name: %s, pagesinmem: %d\n", myproc()->name, myproc()->pagesInPhyMem);
-      recordNewPage((char*)a);
+      NewPageRecord((char*)a);
     }
     memset(mem, 0, PGSIZE);
     if(mappages(pgdir, (char*)a, PGSIZE, V2P(mem), PTE_W|PTE_U) < 0){
@@ -448,22 +433,22 @@ deallocuvm(pde_t *pgdir, uint oldsz, uint newsz)
         */
 
         for (i = 0; i < MAX_PSYC_PAGES; i++) {
-          if (myproc()->freepages[i].virtualAddress == (char*)a)
+          if (myproc()->pagesFreedARR[i].virtualAddress == (char*)a)
             goto founddeallocuvmPTEP;
         }
 
-        panic("deallocuvm: entry not found in proc->freepages");
+        panic("deallocuvm: entry not found in proc->pagesFreedARR");
 founddeallocuvmPTEP:
-        myproc()->freepages[i].virtualAddress = (char*) 0xffffffff;
-        if (myproc()->head == &myproc()->freepages[i])
-          myproc()->head = myproc()->freepages[i].next;
+        myproc()->pagesFreedARR[i].virtualAddress = (char*) 0xffffffff;
+        if (myproc()->head == &myproc()->pagesFreedARR[i])
+          myproc()->head = myproc()->pagesFreedARR[i].next;
         else {
           struct freepg *l = myproc()->head;
-          while (l->next != &myproc()->freepages[i])
+          while (l->next != &myproc()->pagesFreedARR[i])
             l = l->next;
-          l->next = myproc()->freepages[i].next;
+          l->next = myproc()->pagesFreedARR[i].next;
         }
-        myproc()->freepages[i].next = 0;
+        myproc()->pagesFreedARR[i].next = 0;
         myproc()->pagesInPhyMem--;
       }
       char *v = P2V(pa);
@@ -476,14 +461,14 @@ founddeallocuvmPTEP:
       argument. Update proc's data structure accordingly.
       */
         for (i = 0; i < MAX_PSYC_PAGES; i++) {
-          if (myproc()->swappedpages[i].virtualAddress == (char*)a)
+          if (myproc()->pagesSwappedARR[i].virtualAddress == (char*)a)
             goto founddeallocuvmPTEPG;
         }
-        panic("deallocuvm: entry not found in proc->swappedpages");
+        panic("deallocuvm: entry not found in proc->pagesSwappedARR");
 founddeallocuvmPTEPG:
-        myproc()->swappedpages[i].virtualAddress = (char*) 0xffffffff;
-        myproc()->swappedpages[i].age = 0;
-        myproc()->swappedpages[i].swaploc = 0;
+        myproc()->pagesSwappedARR[i].virtualAddress = (char*) 0xffffffff;
+        myproc()->pagesSwappedARR[i].age = 0;
+        myproc()->pagesSwappedARR[i].swaploc = 0;
         myproc()->pagesInSwapFile--;
     }
 
@@ -607,23 +592,22 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
 
 void fifoSwap(uint addr){
   int i, j;
-  char buf[BUF_SIZE];
+  char buffer[BUF_SIZE];
   pte_t *pte1, *pte2;
 
-  struct freepg *link = myproc()->head;
+  struct freepg *link_temp = myproc()->head;
   struct freepg *l;
-  if (link == 0)
+  if (link_temp == 0)
     panic("fifoSwap: proc->head is NULL");
-  if (link->next == 0)
+  if (link_temp->next == 0)
     panic("fifoSwap: single page in phys mem");
-  // find the before-last link in the used pages list
-  while (link->next->next != 0)
-    link = link->next;
-  l = link->next;
-  link->next = 0;
+  // find the before-last link_temp in the used pages list
+  while (link_temp->next->next != 0)
+    link_temp = link_temp->next;
+  l = link_temp->next;
+  link_temp->next = 0;
 
-  if(DEBUG){
-    //cprintf("\naddress between 0x%x and 0x%x was accessed but was on disk.\n", addr, addr+PGSIZE);
+  if(PRINT_DEBUG){
     cprintf("FIFO chose to page out page starting at 0x%x \n\n", l->virtualAddress);
   }
 
@@ -633,13 +617,12 @@ void fifoSwap(uint addr){
     panic("swapFile: FIFO pte1 is empty");
   //find a swap file page descriptor slot
   for (i = 0; i < MAX_PSYC_PAGES; i++)
-    if (myproc()->swappedpages[i].virtualAddress == (char*)PTE_ADDR(addr))
+    if (myproc()->pagesSwappedARR[i].virtualAddress == (char*)PTE_ADDR(addr))
       goto foundswappedslot;
   panic("swappages");
 foundswappedslot:
   //update relevant fields in proc
-  // proc->swappedpages[i].va = (char*)P2V_WO(PTE_ADDR(*pte1)); // WRONG!!!
-  myproc()->swappedpages[i].virtualAddress = l->virtualAddress;
+  myproc()->pagesSwappedARR[i].virtualAddress = l->virtualAddress;
   //assign the physical page to addr in the relevant page table
   pte2 = walkpgdir(myproc()->pgdir, (void*)addr, 0);
   if (!*pte2)
@@ -650,18 +633,14 @@ foundswappedslot:
     int loc = (i * PGSIZE) + ((PGSIZE / 4) * j);
     // cprintf("i:%d j:%d loc:0x%x\n", i,j,loc);//TODO delete
     int addroffset = ((PGSIZE / 4) * j);
-    // int read, written;
-    memset(buf, 0, BUF_SIZE);
-    //copy the new page from the swap file to buf
-    // read =
-    readFromSwapFile(myproc(), buf, loc, BUF_SIZE);
-    // cprintf("read:%d\n", read);//TODO delete
+    memset(buffer, 0, BUF_SIZE);
+    //copy the new page from the swap file to buffer
+    readFromSwapFile(myproc(), buffer, loc, BUF_SIZE);
     //copy the old page from the memory to the swap file
     //written =
     writeToSwapFile(myproc(), (char*)(P2V_WO(PTE_ADDR(*pte1)) + addroffset), loc, BUF_SIZE);
-    // cprintf("written:%d\n", written);//TODO delete
-    //copy the new page from buf to the memory
-    memmove((void*)(PTE_ADDR(addr) + addroffset), (void*)buf, BUF_SIZE);
+    //copy the new page from buffer to the memory
+    memmove((void*)(PTE_ADDR(addr) + addroffset), (void*)buffer, BUF_SIZE);
   }
   //update the page table entry flags, reset the physical page address
   *pte1 = PTE_U | PTE_W | PTE_PG;
@@ -672,17 +651,13 @@ foundswappedslot:
 }
 
 void swapPages(uint addr) {
-  //TODO delet   cprintf("resched swapPages!\n");
   struct proc *proc = myproc();
   if (strncmp(proc->name, "init",4) == 0 || strncmp(proc->name, "sh", 2) == 0) {
     proc->pagesInPhyMem++;
     return;
   }
-//TODO delete $$$
   fifoSwap(addr);
   lcr3(V2P(proc->pgdir));
-  ++proc->totalPagedOutCount;
-  // cprintf("swapPages:proc->totalPagedOutCount:%d\n", ++proc->totalPagedOutCount);//TODO delete
 }
 
 //PAGEBREAK!

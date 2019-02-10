@@ -20,8 +20,6 @@ exec(char *path, char **argv)
   struct proc *curproc = myproc();
   int pagesInPhyMem = 0;
   int pagesInSwapFile = 0;
-  int totalPageFaultCount = 0;
-  int totalPagedOutCount = 0;
   struct freepg *head = 0;
   struct freepg *tail = 0;
 
@@ -46,35 +44,31 @@ exec(char *path, char **argv)
 
   // backup and reset proc fields
   //TODO delete   
-  cprintf("EXEC: NONE undefined (proc = %s)- backing up page info \n", curproc->name);
+  cprintf("EXEC:(proc = %s)- backing up page info \n", curproc->name);
   pagesInPhyMem = curproc->pagesInPhyMem;
   pagesInSwapFile = curproc->pagesInSwapFile;
-  totalPageFaultCount = curproc->totalPageFaultCount;
-  totalPagedOutCount = curproc->totalPagedOutCount;
-  struct freepg freepages[MAX_PSYC_PAGES];
-  struct pgdesc swappedpages[MAX_PSYC_PAGES];
+  struct freepg pagesFreedARR[MAX_PSYC_PAGES];
+  struct pgdesc pagesSwappedARR[MAX_PSYC_PAGES];
   for (i = 0; i < MAX_PSYC_PAGES; i++) {
-    freepages[i].virtualAddress = curproc->freepages[i].virtualAddress;
-    curproc->freepages[i].virtualAddress = (char*)0xffffffff;
-    freepages[i].next = curproc->freepages[i].next;
-    curproc->freepages[i].next = 0;
-    freepages[i].prev = curproc->freepages[i].prev;
-    curproc->freepages[i].prev = 0;
-    freepages[i].age = curproc->freepages[i].age;
-    curproc->freepages[i].age = 0;
-    swappedpages[i].age = curproc->swappedpages[i].age;
-    curproc->swappedpages[i].age = 0;
-    swappedpages[i].virtualAddress = curproc->swappedpages[i].virtualAddress;
-    curproc->swappedpages[i].virtualAddress = (char*)0xffffffff;
-    swappedpages[i].swaploc = curproc->swappedpages[i].swaploc;
-    curproc->swappedpages[i].swaploc = 0;
+    pagesFreedARR[i].virtualAddress = curproc->pagesFreedARR[i].virtualAddress;
+    curproc->pagesFreedARR[i].virtualAddress = (char*)0xffffffff;
+    pagesFreedARR[i].next = curproc->pagesFreedARR[i].next;
+    curproc->pagesFreedARR[i].next = 0;
+    pagesFreedARR[i].prev = curproc->pagesFreedARR[i].prev;
+    curproc->pagesFreedARR[i].prev = 0;
+    pagesFreedARR[i].age = curproc->pagesFreedARR[i].age;
+    curproc->pagesFreedARR[i].age = 0;
+    pagesSwappedARR[i].age = curproc->pagesSwappedARR[i].age;
+    curproc->pagesSwappedARR[i].age = 0;
+    pagesSwappedARR[i].virtualAddress = curproc->pagesSwappedARR[i].virtualAddress;
+    curproc->pagesSwappedARR[i].virtualAddress = (char*)0xffffffff;
+    pagesSwappedARR[i].swaploc = curproc->pagesSwappedARR[i].swaploc;
+    curproc->pagesSwappedARR[i].swaploc = 0;
   }
   head = curproc->head;
   tail = curproc->tail;
   curproc->pagesInPhyMem = 0;
   curproc->pagesInSwapFile = 0;
-  curproc->totalPageFaultCount = 0;
-  curproc->totalPagedOutCount = 0;
   curproc->head = 0;
   curproc->tail = 0;
 
@@ -158,18 +152,17 @@ exec(char *path, char **argv)
   }
   curproc->pagesInPhyMem = pagesInPhyMem;
   curproc->pagesInSwapFile = pagesInSwapFile;
-  curproc->totalPageFaultCount = totalPageFaultCount;
-  curproc->totalPagedOutCount = totalPagedOutCount;
+
   curproc->head = head;
   curproc->tail = tail;
   for (i = 0; i < MAX_PSYC_PAGES; i++) {
-    curproc->freepages[i].virtualAddress = freepages[i].virtualAddress;
-    curproc->freepages[i].next = freepages[i].next;
-    curproc->freepages[i].prev = freepages[i].prev;
-    curproc->freepages[i].age = freepages[i].age;
-    curproc->swappedpages[i].age = swappedpages[i].age;
-    curproc->swappedpages[i].virtualAddress = swappedpages[i].virtualAddress;
-    curproc->swappedpages[i].swaploc = swappedpages[i].swaploc;
+    curproc->pagesFreedARR[i].virtualAddress = pagesFreedARR[i].virtualAddress;
+    curproc->pagesFreedARR[i].next = pagesFreedARR[i].next;
+    curproc->pagesFreedARR[i].prev = pagesFreedARR[i].prev;
+    curproc->pagesFreedARR[i].age = pagesFreedARR[i].age;
+    curproc->pagesSwappedARR[i].age = pagesSwappedARR[i].age;
+    curproc->pagesSwappedARR[i].virtualAddress = pagesSwappedARR[i].virtualAddress;
+    curproc->pagesSwappedARR[i].swaploc = pagesSwappedARR[i].swaploc;
   }
   return -1;
 }

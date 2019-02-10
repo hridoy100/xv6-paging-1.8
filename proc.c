@@ -124,18 +124,16 @@ found:
 
   // initialize process's page data
   for (int i = 0; i < MAX_PSYC_PAGES; i++) {
-    p->freepages[i].virtualAddress = (char*)0xffffffff;
-    p->freepages[i].next = 0;
-    p->freepages[i].prev = 0;
-    p->freepages[i].age = 0;
-    p->swappedpages[i].age = 0;
-    p->swappedpages[i].swaploc = 0;
-    p->swappedpages[i].virtualAddress = (char*)0xffffffff;
+    p->pagesFreedARR[i].virtualAddress = (char*)0xffffffff;
+    p->pagesFreedARR[i].next = 0;
+    p->pagesFreedARR[i].prev = 0;
+    p->pagesFreedARR[i].age = 0;
+    p->pagesSwappedARR[i].age = 0;
+    p->pagesSwappedARR[i].swaploc = 0;
+    p->pagesSwappedARR[i].virtualAddress = (char*)0xffffffff;
   }
   p->pagesInPhyMem = 0;
   p->pagesInSwapFile = 0;
-  p->totalPageFaultCount = 0;
-  p->totalPagedOutCount = 0;
   p->head = 0;
   p->tail = 0;
 
@@ -265,8 +263,6 @@ fork(void)
   }
 
   // no need for this after all
-  //np->totalPageFaultCount = proc->totalPageFaultCount;
-  //np->totalPagedOutCount = proc->totalPagedOutCount;
 
 /*
   char *diff = (char*)(&proc->freepages[0] - &np->freepages[0]);
@@ -276,37 +272,37 @@ fork(void)
     np->freepages[i].next = (struct freepg *)((uint)proc->freepages[i].next + (uint)diff);
     np->freepages[i].prev = (struct freepg *)((uint)proc->freepages[i].prev + (uint)diff);
     np->freepages[i].age = proc->freepages[i].age;
-    np->swappedpages[i].age = proc->swappedpages[i].age;
-    np->swappedpages[i].va = proc->swappedpages[i].va;
-    np->swappedpages[i].swaploc = proc->swappedpages[i].swaploc;
+    np->pagesSwappedARR[i].age = proc->pagesSwappedARR[i].age;
+    np->pagesSwappedARR[i].va = proc->pagesSwappedARR[i].va;
+    np->pagesSwappedARR[i].swaploc = proc->pagesSwappedARR[i].swaploc;
   }
 */
   //copy parent process data into child process..
   for (int i = 0; i < MAX_PSYC_PAGES; i++) {
-    np->freepages[i].virtualAddress = curproc->freepages[i].virtualAddress;
-    np->freepages[i].age = curproc->freepages[i].age;
-    np->swappedpages[i].age = curproc->swappedpages[i].age;
-    np->swappedpages[i].virtualAddress = curproc->swappedpages[i].virtualAddress;
-    np->swappedpages[i].swaploc = curproc->swappedpages[i].swaploc;
+    np->pagesFreedARR[i].virtualAddress = curproc->pagesFreedARR[i].virtualAddress;
+    np->pagesFreedARR[i].age = curproc->pagesFreedARR[i].age;
+    np->pagesSwappedARR[i].age = curproc->pagesSwappedARR[i].age;
+    np->pagesSwappedARR[i].virtualAddress = curproc->pagesSwappedARR[i].virtualAddress;
+    np->pagesSwappedARR[i].swaploc = curproc->pagesSwappedARR[i].swaploc;
   }
 
   for (int i = 0; i < MAX_PSYC_PAGES; i++) 
     for (int j = 0; j < MAX_PSYC_PAGES; ++j){
-      if(np->freepages[j].virtualAddress == curproc->freepages[i].next->virtualAddress)
-        np->freepages[i].next = &np->freepages[j];
-      if(np->freepages[j].virtualAddress == curproc->freepages[i].prev->virtualAddress)
-        np->freepages[i].prev = &np->freepages[j];
+      if(np->pagesFreedARR[j].virtualAddress == curproc->pagesFreedARR[i].next->virtualAddress)
+        np->pagesFreedARR[i].next = &np->pagesFreedARR[j];
+      if(np->pagesFreedARR[j].virtualAddress == curproc->pagesFreedARR[i].prev->virtualAddress)
+        np->pagesFreedARR[i].prev = &np->pagesFreedARR[j];
     }
 
       
   for (int i = 0; i < MAX_PSYC_PAGES; i++) {
-    if (curproc->head->virtualAddress == np->freepages[i].virtualAddress){
+    if (curproc->head->virtualAddress == np->pagesFreedARR[i].virtualAddress){
       //TODO delete 
       cprintf("\nfork: head copied!\n\n");
-      np->head = &np->freepages[i];
+      np->head = &np->pagesFreedARR[i];
     }
-    if (curproc->tail->virtualAddress == np->freepages[i].virtualAddress)
-      np->tail = &np->freepages[i];
+    if (curproc->tail->virtualAddress == np->pagesFreedARR[i].virtualAddress)
+      np->tail = &np->pagesFreedARR[i];
   }
 
   acquire(&ptable.lock);
@@ -344,8 +340,6 @@ printProcMemPageInfo(struct proc *proc){
   //print out memory pages info:
   cprintf("No. of pages currently in physical memory: %d,\n", proc->pagesInPhyMem);
   cprintf("No. of pages currently paged out: %d,\n", proc->pagesInSwapFile);
-  cprintf("Total No. of page faults: %d,\n", proc->totalPageFaultCount);
-  cprintf("Total number of paged out pages: %d,\n\n", proc->totalPagedOutCount);
 
   // regular xv6 procdump printing
   if(proc->state == SLEEPING){
@@ -356,8 +350,8 @@ printProcMemPageInfo(struct proc *proc){
   if(DEBUG){
     for (i = 0; i < MAX_PSYC_PAGES; ++i)
     {
-      if(proc->freepages[i].virtualAddress != (char*)0xffffffff)
-        cprintf("freepages[%d].va = 0x%x \n", i, proc->freepages[i].virtualAddress);
+      if(proc->pagesFreedARR[i].virtualAddress != (char*)0xffffffff)
+        cprintf("pagesFreedARR[%d].va = 0x%x \n", i, proc->pagesFreedARR[i].virtualAddress);
     }
     i = 0;
     l = proc->head;
