@@ -127,8 +127,6 @@ found:
     p->pagesFreedARR[i].virtualAddress = (char*)0xffffffff;
     p->pagesFreedARR[i].next = 0;
     p->pagesFreedARR[i].prev = 0;
-    p->pagesFreedARR[i].age = 0;
-    p->pagesSwappedARR[i].age = 0;
     p->pagesSwappedARR[i].swaploc = 0;
     p->pagesSwappedARR[i].virtualAddress = (char*)0xffffffff;
   }
@@ -271,8 +269,6 @@ fork(void)
     np->freepages[i].va = proc->freepages[i].va;
     np->freepages[i].next = (struct freepg *)((uint)proc->freepages[i].next + (uint)diff);
     np->freepages[i].prev = (struct freepg *)((uint)proc->freepages[i].prev + (uint)diff);
-    np->freepages[i].age = proc->freepages[i].age;
-    np->pagesSwappedARR[i].age = proc->pagesSwappedARR[i].age;
     np->pagesSwappedARR[i].va = proc->pagesSwappedARR[i].va;
     np->pagesSwappedARR[i].swaploc = proc->pagesSwappedARR[i].swaploc;
   }
@@ -280,8 +276,6 @@ fork(void)
   //copy parent process data into child process..
   for (int i = 0; i < MAX_PSYC_PAGES; i++) {
     np->pagesFreedARR[i].virtualAddress = curproc->pagesFreedARR[i].virtualAddress;
-    np->pagesFreedARR[i].age = curproc->pagesFreedARR[i].age;
-    np->pagesSwappedARR[i].age = curproc->pagesSwappedARR[i].age;
     np->pagesSwappedARR[i].virtualAddress = curproc->pagesSwappedARR[i].virtualAddress;
     np->pagesSwappedARR[i].swaploc = curproc->pagesSwappedARR[i].swaploc;
   }

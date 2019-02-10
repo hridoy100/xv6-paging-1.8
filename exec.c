@@ -56,10 +56,6 @@ exec(char *path, char **argv)
     curproc->pagesFreedARR[i].next = 0;
     pagesFreedARR[i].prev = curproc->pagesFreedARR[i].prev;
     curproc->pagesFreedARR[i].prev = 0;
-    pagesFreedARR[i].age = curproc->pagesFreedARR[i].age;
-    curproc->pagesFreedARR[i].age = 0;
-    pagesSwappedARR[i].age = curproc->pagesSwappedARR[i].age;
-    curproc->pagesSwappedARR[i].age = 0;
     pagesSwappedARR[i].virtualAddress = curproc->pagesSwappedARR[i].virtualAddress;
     curproc->pagesSwappedARR[i].virtualAddress = (char*)0xffffffff;
     pagesSwappedARR[i].swaploc = curproc->pagesSwappedARR[i].swaploc;
@@ -159,8 +155,6 @@ exec(char *path, char **argv)
     curproc->pagesFreedARR[i].virtualAddress = pagesFreedARR[i].virtualAddress;
     curproc->pagesFreedARR[i].next = pagesFreedARR[i].next;
     curproc->pagesFreedARR[i].prev = pagesFreedARR[i].prev;
-    curproc->pagesFreedARR[i].age = pagesFreedARR[i].age;
-    curproc->pagesSwappedARR[i].age = pagesSwappedARR[i].age;
     curproc->pagesSwappedARR[i].virtualAddress = pagesSwappedARR[i].virtualAddress;
     curproc->pagesSwappedARR[i].swaploc = pagesSwappedARR[i].swaploc;
   }

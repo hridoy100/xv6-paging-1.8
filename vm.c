@@ -312,7 +312,6 @@ foundswappedpageslot:
   temp->next = 0;
 
   if(PRINT_DEBUG){
-    //cprintf("\naddress between 0x%x and 0x%x was accessed but was on disk.\n", addr, addr+PGSIZE);
     cprintf("FIFO chose to page out page starting at 0x%x \n\n", l->virtualAddress);
   }
 
@@ -320,7 +319,6 @@ foundswappedpageslot:
   int num = 0;
   if ((num = writeToSwapFile(myproc(), (char*)PTE_ADDR(l->virtualAddress), i * PGSIZE, PGSIZE)) == 0)
     return 0;
-  // cprintf("written %d bytes to swap file, pid:%d, va:0x%x\n", num, proc->pid, l->va);//TODO delete
   pte_t *pte1 = walkpgdir(myproc()->pgdir, (void*)l->virtualAddress, 0);
   if (!*pte1)
     panic("PageWriteInFile: pte1 is empty");
@@ -363,7 +361,6 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
       // TODO delete 
       cprintf("writing to swap file, proc->name: %s, pagesinmem: %d\n", myproc()->name, myproc()->pagesInPhyMem);
 
-      //TODO remove l! it doesn't belong here
       if ((l = PageWriteInFile((char*)a)) == 0)
         panic("allocuvm: error writing page to swap file");
 
@@ -421,7 +418,6 @@ deallocuvm(pde_t *pgdir, uint oldsz, uint newsz)
     pte = walkpgdir(pgdir, (char*)a, 0);
     if(!pte)
       a = PGADDR(PDX(a) + 1, 0, 0) - PGSIZE;
-      //a += (NPTENTRIES - 1) * PGSIZE;
     else if((*pte & PTE_P) != 0){
       pa = PTE_ADDR(*pte);
       if(pa == 0)
@@ -434,11 +430,11 @@ deallocuvm(pde_t *pgdir, uint oldsz, uint newsz)
 
         for (i = 0; i < MAX_PSYC_PAGES; i++) {
           if (myproc()->pagesFreedARR[i].virtualAddress == (char*)a)
-            goto founddeallocuvmPTEP;
+            goto UpdateFIFOarr;
         }
 
         panic("deallocuvm: entry not found in proc->pagesFreedARR");
-founddeallocuvmPTEP:
+UpdateFIFOarr:
         myproc()->pagesFreedARR[i].virtualAddress = (char*) 0xffffffff;
         if (myproc()->head == &myproc()->pagesFreedARR[i])
           myproc()->head = myproc()->pagesFreedARR[i].next;
@@ -462,12 +458,11 @@ founddeallocuvmPTEP:
       */
         for (i = 0; i < MAX_PSYC_PAGES; i++) {
           if (myproc()->pagesSwappedARR[i].virtualAddress == (char*)a)
-            goto founddeallocuvmPTEPG;
+            goto UpdateFIFOarrG;
         }
         panic("deallocuvm: entry not found in proc->pagesSwappedARR");
-founddeallocuvmPTEPG:
+UpdateFIFOarrG:
         myproc()->pagesSwappedARR[i].virtualAddress = (char*) 0xffffffff;
-        myproc()->pagesSwappedARR[i].age = 0;
         myproc()->pagesSwappedARR[i].swaploc = 0;
         myproc()->pagesInSwapFile--;
     }
@@ -594,9 +589,9 @@ void fifoSwap(uint addr){
   int i, j;
   char buffer[BUF_SIZE];
   pte_t *pte1, *pte2;
-
-  struct freepg *link_temp = myproc()->head;
   struct freepg *l;
+  struct freepg *link_temp = myproc()->head;
+  
   if (link_temp == 0)
     panic("fifoSwap: proc->head is NULL");
   if (link_temp->next == 0)
@@ -618,9 +613,9 @@ void fifoSwap(uint addr){
   //find a swap file page descriptor slot
   for (i = 0; i < MAX_PSYC_PAGES; i++)
     if (myproc()->pagesSwappedARR[i].virtualAddress == (char*)PTE_ADDR(addr))
-      goto foundswappedslot;
+      goto SWAPPEDSLOTFOUND;
   panic("swappages");
-foundswappedslot:
+SWAPPEDSLOTFOUND:
   //update relevant fields in proc
   myproc()->pagesSwappedARR[i].virtualAddress = l->virtualAddress;
   //assign the physical page to addr in the relevant page table
