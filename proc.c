@@ -216,8 +216,8 @@ fork(void)
     np->state = UNUSED;
     return -1;
   }
-  // TODO delete 
-  cprintf("fork:copyuvm proc->pagesinmem:%d\n", curproc->pagesInPhyMem);
+  if(DEBUG) 
+    cprintf("fork:copyuvm proc->pagesinmem:%d\n", curproc->pagesInPhyMem);
   np->pagesInPhyMem = curproc->pagesInPhyMem;
   np->pagesInSwapFile = curproc->pagesInSwapFile;
   np->sz = curproc->sz;
@@ -288,8 +288,8 @@ fork(void)
       
   for (int i = 0; i < MAX_PSYC_PAGES; i++) {
     if (curproc->head->virtualAddress == np->pagesFreedARR[i].virtualAddress){
-      //TODO delete 
-      cprintf("\nfork: head copied!\n\n");
+      if(DEBUG) 
+        cprintf("\nfork: head copied!\n\n");
       np->head = &np->pagesFreedARR[i];
     }
     if (curproc->tail->virtualAddress == np->pagesFreedARR[i].virtualAddress)
@@ -391,7 +391,6 @@ exit(void)
   // sending proc as arg just to share func with procdump
     printProcMemPageInfo(curproc);
   }
-  //#endif
 
 
   begin_op();

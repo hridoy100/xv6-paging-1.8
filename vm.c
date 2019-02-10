@@ -81,25 +81,6 @@ walkpgdir(pde_t *pgdir, const void *va, int alloc)
   return &pgtab[PTX(va)];
 }
 
-
-void
-checkProcAccBit(){
-  int i;
-  pte_t *pte1;
-
-  //cprintf("checkAccessedBit\n");
-  for (i = 0; i < MAX_PSYC_PAGES; i++)
-    if (myproc()->pagesFreedARR[i].virtualAddress != (char*)0xffffffff){
-      pte1 = walkpgdir(myproc()->pgdir, (void*)myproc()->pagesFreedARR[i].virtualAddress, 0);
-      if (!*pte1){
-        cprintf("checkAccessedBit: pte1 is empty\n");
-        continue;
-      }
-      cprintf("checkAccessedBit: pte1 & PTE_A == %d\n", (*pte1) & PTE_A);
-    }
-}
-
-
 // Create PTEs for virtual addresses starting at va that refer to
 // physical addresses starting at pa. va and size might not
 // be page-aligned.
@@ -264,12 +245,13 @@ loaduvm(pde_t *pgdir, char *addr, struct inode *ip, uint offset, uint sz)
 
 void fifoEntryRecord(char *va){
   int i;
-   
-  cprintf("rnp pid:%d count:%d va:0x%x\n", myproc()->pid, myproc()->pagesInPhyMem, va);
+  if(PRINT_DEBUG)
+    cprintf("rnp pid:%d count:%d va:0x%x\n", myproc()->pid, myproc()->pagesInPhyMem, va);
   for (i = 0; i < MAX_PSYC_PAGES; i++)
     if (myproc()->pagesFreedARR[i].virtualAddress == (char*)0xffffffff)
       goto foundrnp;
-  cprintf("panic follows, pid:%d, name:%s\n", myproc()->pid, myproc()->name);
+  if(PRINT_DEBUG)
+    cprintf("panic follows, pid:%d, name:%s\n", myproc()->pid, myproc()->name);
   panic("NewPageRecord: no free pages");
 foundrnp:
   myproc()->pagesFreedARR[i].virtualAddress = va;
@@ -279,12 +261,12 @@ foundrnp:
 
 
 void NewPageRecord(char *va) {
-  
-  cprintf("NewPageRecord: %s is calling fifoRecord with: 0x%x\n", myproc()->name, va);
+  if(PRINT_DEBUG)
+    cprintf("NewPageRecord: %s is calling fifoRecord with: 0x%x\n", myproc()->name, va);
   fifoEntryRecord(va);
   myproc()->pagesInPhyMem++;
- 
-  cprintf("\n++++++++++++++++++ proc->pagesinmem+++++++++++++ : %d\n", myproc()->pagesInPhyMem);
+  if(PRINT_DEBUG)
+    cprintf("\n------------------- proc->pagesinmem ------------------ : %d\n", myproc()->pagesInPhyMem);
 }
 
 
@@ -327,7 +309,7 @@ foundswappedpageslot:
   kfree((char*)PTE_ADDR(P2V_WO(*walkpgdir(myproc()->pgdir, l->virtualAddress, 0))));
   *pte1 = PTE_W | PTE_U | PTE_PG;
   ++myproc()->pagesInSwapFile;
-  cprintf("writePage:proc->pagesinswapfile:%d\n", myproc()->pagesInSwapFile);//TODO delete
+  if(PRINT_DEBUG) cprintf("writePage:proc->pagesinswapfile:%d\n", myproc()->pagesInSwapFile);
   lcr3(V2P(myproc()->pgdir));
   return l;
 }
@@ -356,8 +338,8 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
   for(; a < newsz; a += PGSIZE){
 
     if(myproc()->pagesInPhyMem >= MAX_PSYC_PAGES) {
-      // TODO delete 
-      cprintf("writing to swap file, proc->name: %s, pagesinmem: %d\n", myproc()->name, myproc()->pagesInPhyMem);
+      
+      if(PRINT_DEBUG) cprintf("writing to swap file, proc->name: %s, pagesinmem: %d\n", myproc()->name, myproc()->pagesInPhyMem);
 
       if ((l = PageWriteInFile((char*)a)) == 0)
         panic("allocuvm: error writing page to swap file");
@@ -380,10 +362,9 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
     }
     if (newpage){
       //TODO delete 
-      cprintf("\nnewpage = 1\n");
-      //if(proc->pagesinmem >= 11)
-        //TODO delete 
-      cprintf("recorded new page, proc->name: %s, pagesinmem: %d\n", myproc()->name, myproc()->pagesInPhyMem);
+      if(PRINT_DEBUG) cprintf("\nnewpage = 1\n");
+      
+      if(PRINT_DEBUG) cprintf("recorded new page, proc->name: %s, pagesinmem: %d\n", myproc()->name, myproc()->pagesInPhyMem);
       NewPageRecord((char*)a);
     }
     memset(mem, 0, PGSIZE);

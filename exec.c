@@ -6,6 +6,7 @@
 #include "defs.h"
 #include "x86.h"
 #include "elf.h"
+#define DEBUG 0
 
 int
 exec(char *path, char **argv)
@@ -43,8 +44,8 @@ exec(char *path, char **argv)
     goto bad;
 
   // backup and reset proc fields
-  //TODO delete   
-  cprintf("EXEC:(proc = %s)- backing up page info \n", curproc->name);
+  if(DEBUG)
+    cprintf("EXEC:(proc = %s)- backing up page info \n", curproc->name);
   pagesInPhyMem = curproc->pagesInPhyMem;
   pagesInSwapFile = curproc->pagesInSwapFile;
   struct emptyPages pagesFreedARR[MAX_PSYC_PAGES];

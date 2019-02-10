@@ -7,6 +7,7 @@
 #include "x86.h"
 #include "traps.h"
 #include "spinlock.h"
+#define DEBUG 0
 
 // Interrupt descriptor table (shared by all CPUs).
 struct gatedesc idt[256];
@@ -82,11 +83,11 @@ trap(struct trapframe *tf)
   case T_PGFLT:
     addr = rcr2();
     vaddr = &myproc()->pgdir[PDX(addr)];
-    //cprintf("addr:0x%x vaddr:0x%x PDX:0x%x PTX:0x%x FLAGS:0x%x\n", addr, vaddr, PDX(*vaddr),PTX(*vaddr),PTE_FLAGS(*vaddr)); 
-    //cprintf("&PTE_PG:%x &PTE_P:%x\n", (((uint*)PTE_ADDR(P2V(*vaddr)))[PTX(addr)] & PTE_PG), ((((uint*)PTE_ADDR(P2V(*vaddr)))[PTX(addr)] & PTE_P)));
+    if(DEBUG) cprintf("addr:0x%x vaddr:0x%x PDX:0x%x PTX:0x%x FLAGS:0x%x\n", addr, vaddr, PDX(*vaddr),PTX(*vaddr),PTE_FLAGS(*vaddr)); 
+    if(DEBUG) cprintf("&PTE_PG:%x &PTE_P:%x\n", (((uint*)PTE_ADDR(P2V(*vaddr)))[PTX(addr)] & PTE_PG), ((((uint*)PTE_ADDR(P2V(*vaddr)))[PTX(addr)] & PTE_P)));
     if (((int)(*vaddr) & PTE_P) != 0) { // if page table isn't present at page directory -> hard page fault
       if (((uint*)PTE_ADDR(P2V(*vaddr)))[PTX(addr)] & PTE_PG) { // if the page is in the process's swap file
-        cprintf("page is in swap file, pid %d, va %p\n", myproc()->pid, addr); 
+        if(DEBUG) cprintf("page is in swap file, pid %d, va %p\n", myproc()->pid, addr); 
         swapPages(PTE_ADDR(addr));
         return;
       }
