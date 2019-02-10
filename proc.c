@@ -6,12 +6,9 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
-#include "kalloc.h"
 
-//using 0x80000000 introduces "negative" numbers
-#define ADD_TO_AGE 0x40000000
-#define DEBUG 1
-#define TRUE 1
+#define DEBUG 0
+#define TRUE 0
 
 struct {
   struct spinlock lock;
@@ -267,8 +264,8 @@ fork(void)
 
   for (i = 0; i < MAX_PSYC_PAGES; i++) {
     np->freepages[i].va = proc->freepages[i].va;
-    np->freepages[i].next = (struct freepg *)((uint)proc->freepages[i].next + (uint)diff);
-    np->freepages[i].prev = (struct freepg *)((uint)proc->freepages[i].prev + (uint)diff);
+    np->freepages[i].next = (struct emptyPages *)((uint)proc->freepages[i].next + (uint)diff);
+    np->freepages[i].prev = (struct emptyPages *)((uint)proc->freepages[i].prev + (uint)diff);
     np->pagesSwappedARR[i].va = proc->pagesSwappedARR[i].va;
     np->pagesSwappedARR[i].swaploc = proc->pagesSwappedARR[i].swaploc;
   }
@@ -321,7 +318,7 @@ printProcMemPageInfo(struct proc *proc){
   int i;
   char *state;
   uint pc[10];
-  struct freepg *l;
+  struct emptyPages *l;
 
   if(proc->state >= 0 && proc->state < NELEM(states) && states[proc->state])
     state = states[proc->state];
@@ -669,7 +666,6 @@ procdump(void)
   [ZOMBIE]    "zombie"
   };
   int i;*/
-  int percent;
   struct proc *p;
   //char *state;
   //uint pc[10];
@@ -689,9 +685,5 @@ procdump(void)
         cprintf(" %p", pc[i]);
     }*/
 
-  // print general (not per-process) physical memory pages info
-  percent = physPagesCounts.currentFreePagesNo * 100 / physPagesCounts.initPagesNo;
-  cprintf("\n\nPercent of free physical pages: %d/%d ~ 0.%d%% \n",  physPagesCounts.currentFreePagesNo,
-                                                                    physPagesCounts.initPagesNo , percent);
   }
 }

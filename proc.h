@@ -40,15 +40,15 @@ struct context {
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
-struct pgdesc {
+struct swpdPages {
   uint swaploc;
   char *virtualAddress;
 };
 
-struct freepg {
+struct emptyPages {
   char *virtualAddress;
-  struct freepg *next;
-  struct freepg *prev;
+  struct emptyPages *next;
+  struct emptyPages *prev;
 };
 
 
@@ -72,10 +72,10 @@ struct proc {
 
   int pagesInPhyMem;             // No. of pages in physical memory
   int pagesInSwapFile;        // No. of pages in swap file
-  struct freepg pagesFreedARR[MAX_PSYC_PAGES];  // Pre-allocated space for the pages in physical memory linked list
-  struct pgdesc pagesSwappedARR[MAX_PSYC_PAGES];// Pre-allocated space for the pages in swap file array
-  struct freepg *head;        // Head of the pages in physical memory linked list
-  struct freepg *tail;        // End of the pages in physical memory linked list
+  struct emptyPages pagesFreedARR[MAX_PSYC_PAGES];  // Pre-allocated space for the pages in physical memory linked list
+  struct swpdPages pagesSwappedARR[MAX_PSYC_PAGES];// Pre-allocated space for the pages in swap file array
+  struct emptyPages *head;        // Head of the pages in physical memory linked list
+  struct emptyPages *tail;        // End of the pages in physical memory linked list
 
 
 };

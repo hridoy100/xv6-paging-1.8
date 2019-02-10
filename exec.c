@@ -20,8 +20,8 @@ exec(char *path, char **argv)
   struct proc *curproc = myproc();
   int pagesInPhyMem = 0;
   int pagesInSwapFile = 0;
-  struct freepg *head = 0;
-  struct freepg *tail = 0;
+  struct emptyPages *head = 0;
+  struct emptyPages *tail = 0;
 
   begin_op();
 
@@ -47,8 +47,8 @@ exec(char *path, char **argv)
   cprintf("EXEC:(proc = %s)- backing up page info \n", curproc->name);
   pagesInPhyMem = curproc->pagesInPhyMem;
   pagesInSwapFile = curproc->pagesInSwapFile;
-  struct freepg pagesFreedARR[MAX_PSYC_PAGES];
-  struct pgdesc pagesSwappedARR[MAX_PSYC_PAGES];
+  struct emptyPages pagesFreedARR[MAX_PSYC_PAGES];
+  struct swpdPages pagesSwappedARR[MAX_PSYC_PAGES];
   for (i = 0; i < MAX_PSYC_PAGES; i++) {
     pagesFreedARR[i].virtualAddress = curproc->pagesFreedARR[i].virtualAddress;
     curproc->pagesFreedARR[i].virtualAddress = (char*)0xffffffff;

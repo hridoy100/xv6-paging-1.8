@@ -8,10 +8,8 @@
 #include "elf.h"
 
 #define BUF_SIZE PGSIZE/4
-#define MAX_POSSIBLE ~0x80000000
-//using 0x80000000 introduces "negative" numbers
-#define ADD_TO_AGE 0x40000000
-#define PRINT_DEBUG 1
+
+#define PRINT_DEBUG 0
 
 extern char data[];  // defined by kernel.ld
 pde_t *kpgdir;  // for use in scheduler()
@@ -291,9 +289,9 @@ void NewPageRecord(char *va) {
 
 
 
-struct freepg *fifoWrite() {
+struct emptyPages *fifoWrite() {
   int i;
-  struct freepg *temp, *l;
+  struct emptyPages *temp, *l;
   for (i = 0; i < MAX_PSYC_PAGES; i++){
     if (myproc()->pagesSwappedARR[i].virtualAddress == (char*)0xffffffff)
       goto foundswappedpageslot;
@@ -335,7 +333,7 @@ foundswappedpageslot:
 }
 
 
-struct freepg *PageWriteInFile(char* va) {
+struct emptyPages *PageWriteInFile(char* va) {
   return fifoWrite();
 }
 
@@ -347,7 +345,7 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
   char *mem;
   uint a;
   uint newpage = 1;
-  struct freepg *l;
+  struct emptyPages *l;
 
   if(newsz >= KERNBASE)
     return 0;
@@ -439,7 +437,7 @@ UpdateFIFOarr:
         if (myproc()->head == &myproc()->pagesFreedARR[i])
           myproc()->head = myproc()->pagesFreedARR[i].next;
         else {
-          struct freepg *l = myproc()->head;
+          struct emptyPages *l = myproc()->head;
           while (l->next != &myproc()->pagesFreedARR[i])
             l = l->next;
           l->next = myproc()->pagesFreedARR[i].next;
@@ -589,8 +587,8 @@ void fifoSwap(uint addr){
   int i, j;
   char buffer[BUF_SIZE];
   pte_t *pte1, *pte2;
-  struct freepg *l;
-  struct freepg *link_temp = myproc()->head;
+  struct emptyPages *l;
+  struct emptyPages *link_temp = myproc()->head;
   
   if (link_temp == 0)
     panic("fifoSwap: proc->head is NULL");

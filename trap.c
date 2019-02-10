@@ -82,11 +82,11 @@ trap(struct trapframe *tf)
   case T_PGFLT:
     addr = rcr2();
     vaddr = &myproc()->pgdir[PDX(addr)];
-    cprintf("addr:0x%x vaddr:0x%x PDX:0x%x PTX:0x%x FLAGS:0x%x\n", addr, vaddr, PDX(*vaddr),PTX(*vaddr),PTE_FLAGS(*vaddr)); //TODO delete
-    cprintf("&PTE_PG:%x &PTE_P:%x\n", (((uint*)PTE_ADDR(P2V(*vaddr)))[PTX(addr)] & PTE_PG), ((((uint*)PTE_ADDR(P2V(*vaddr)))[PTX(addr)] & PTE_P))); //TODO delete
+    //cprintf("addr:0x%x vaddr:0x%x PDX:0x%x PTX:0x%x FLAGS:0x%x\n", addr, vaddr, PDX(*vaddr),PTX(*vaddr),PTE_FLAGS(*vaddr)); 
+    //cprintf("&PTE_PG:%x &PTE_P:%x\n", (((uint*)PTE_ADDR(P2V(*vaddr)))[PTX(addr)] & PTE_PG), ((((uint*)PTE_ADDR(P2V(*vaddr)))[PTX(addr)] & PTE_P)));
     if (((int)(*vaddr) & PTE_P) != 0) { // if page table isn't present at page directory -> hard page fault
       if (((uint*)PTE_ADDR(P2V(*vaddr)))[PTX(addr)] & PTE_PG) { // if the page is in the process's swap file
-        cprintf("page is in swap file, pid %d, va %p\n", myproc()->pid, addr); //TODO delete
+        cprintf("page is in swap file, pid %d, va %p\n", myproc()->pid, addr); 
         swapPages(PTE_ADDR(addr));
         return;
       }

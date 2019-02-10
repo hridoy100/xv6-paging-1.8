@@ -3,7 +3,7 @@
 #include "user.h"
 #include "syscall.h"
 
-#define PGSIZE 4096
+#define pageSize 4096
 #define DEBUG 0
 
 int
@@ -14,10 +14,10 @@ main(int argc, char *argv[]){
 	char input[10];
 	// Allocate all remaining 12 physical pages
 	for (i = 0; i < 12; ++i) {
-		arr[i] = sbrk(PGSIZE);
+		arr[i] = sbrk(pageSize);
 		printf(1, "arr[%d]=0x%x\n", i, arr[i]);
 	}
-	printf(1, "Called sbrk(PGSIZE) 12 times - all physical pages taken.\nPress any key...\n");
+	printf(1, "Called sbrk(pageSize) 12 times - all physical pages taken.\nPress any key...\n");
 	gets(input, 10);
 
 	/*
@@ -26,9 +26,9 @@ main(int argc, char *argv[]){
 	to user space, a PGFLT would occur and pages 0,1 will be hot-swapped.
 	Afterwards, page 1 is in the swap file, the rest are in memory.
 	*/
-	arr[12] = sbrk(PGSIZE);
+	arr[12] = sbrk(pageSize);
 	printf(1, "arr[12]=0x%x\n", arr[12]);
-	printf(1, "Called sbrk(PGSIZE) for the 13th time, a page fault should occur and one page in swap file.\nPress any key...\n");
+	printf(1, "Called sbrk(pageSize) for the 13th time, a page fault should occur and one page in swap file.\nPress any key...\n");
 	gets(input, 10);
 
 	/*
@@ -37,9 +37,9 @@ main(int argc, char *argv[]){
 	user stack, it would be hot-swapped with page 3.
 	Afterwards, pages 1 & 3 are in the swap file, the rest are in memory.
 	*/
-	arr[13] = sbrk(PGSIZE);
+	arr[13] = sbrk(pageSize);
 	printf(1, "arr[13]=0x%x\n", arr[13]);
-	printf(1, "Called sbrk(PGSIZE) for the 14th time, a page fault should occur and two pages in swap file.\nPress any key...\n");
+	printf(1, "Called sbrk(pageSize) for the 14th time, a page fault should occur and two pages in swap file.\nPress any key...\n");
 	gets(input, 10);
 
 	/*
@@ -48,7 +48,7 @@ main(int argc, char *argv[]){
 	and this process repeats a total of 5 times.
 	*/
 	for (i = 0; i < 5; i++) {
-		for (j = 0; j < PGSIZE; j++)
+		for (j = 0; j < pageSize; j++)
 			arr[i][j] = 'k';
 	}
 	printf(1, "5 page faults should have occurred.\nPress any key...\n");
@@ -75,7 +75,7 @@ main(int argc, char *argv[]){
 		/*
 		Deallocate all the pages.
 		*/
-		sbrk(-14 * PGSIZE);
+		sbrk(-14 * pageSize);
 		printf(1, "Deallocated all extra pages.\nPress any key to exit the father code.\n");
 		gets(input, 10);
 	}

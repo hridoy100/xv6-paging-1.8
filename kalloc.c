@@ -8,9 +8,6 @@
 #include "memlayout.h"
 #include "mmu.h"
 #include "spinlock.h"
-#include "kalloc.h"
-
-struct physPagesCounts physPagesCounts;
 
 void freerange(void *vstart, void *vend);
 extern char end[]; // first address after kernel loaded from ELF file
@@ -41,8 +38,8 @@ kinit1(void *vstart, void *vend)
   // physPagesCounts is a struct defined in kalloc.h to hold info needed to cumpute percent of free physcal pages
   // all physical pages allocated to the kernel's allocator's "freelist" are allocated in kinit1 & kinit2
   // here we update the # of pages inserted to free list in kinit1
-  physPagesCounts.initPagesNo = (PGROUNDDOWN((uint)vend) - PGROUNDUP((uint)vstart)) / PGSIZE;
-  cprintf("physPagesCounts->initPagesNo = %d\n", physPagesCounts.initPagesNo );
+  //physPagesCounts.initPagesNo = (PGROUNDDOWN((uint)vend) - PGROUNDUP((uint)vstart)) / PGSIZE;
+  //cprintf("physPagesCounts->initPagesNo = %d\n", physPagesCounts.initPagesNo );
   //cprintf("physPagesCounts->currentFreePagesNo = %d\n", physPagesCounts.currentFreePagesNo );
 
 }
@@ -53,7 +50,7 @@ kinit2(void *vstart, void *vend)
   freerange(vstart, vend);
 
   // update the # of pages inserted to free list in kinit2
-  physPagesCounts.initPagesNo += (PGROUNDDOWN((uint)vend) - PGROUNDUP((uint)vstart)) / PGSIZE;
+  //physPagesCounts.initPagesNo += (PGROUNDDOWN((uint)vend) - PGROUNDUP((uint)vstart)) / PGSIZE;
   
   //cprintf("physPagesCounts->initPagesNo = %d\n", physPagesCounts.initPagesNo );
   //cprintf("physPagesCounts->currentFreePagesNo = %d\n", physPagesCounts.currentFreePagesNo );
@@ -91,7 +88,7 @@ kfree(char *v)
   r = (struct run*)v;
   r->next = kmem.freelist;
   kmem.freelist = r;
-  physPagesCounts.currentFreePagesNo++;
+  //physPagesCounts.currentFreePagesNo++;
   if(kmem.use_lock)
     release(&kmem.lock);
 }
@@ -109,7 +106,7 @@ kalloc(void)
   r = kmem.freelist;
   if(r){
     kmem.freelist = r->next;
-    physPagesCounts.currentFreePagesNo--;
+    //physPagesCounts.currentFreePagesNo--;
   }
   if(kmem.use_lock)
     release(&kmem.lock);
